@@ -1,23 +1,355 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
-    <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"
+        integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC"
+        crossorigin="anonymous"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
+
 <body>
     <div class="flex flex-col h-screen">
         <div class="h-20 flex justify-between">
             <div class="w-2/6 text-center h-full font-bold text-gray-900 text-2xl py-6">LAN SHARING</div>
-            <div class="w-2/6 text-center">
-                <input type="text" class="w-8/12 border border-gray-400 rounded my-6 h-8">
+            <div class="w-2/6 text-center flex">
+                <input type="text" class="w-8/12 border border-gray-400 rounded my-6 h-8 mr-10 px-3"
+                    placeholder="File Name" id="myInput" onkeydown="FileSearch()">
+                <input type="text" class="w-8/12 border border-gray-400 rounded my-6 h-8 mr-10 px-3" placeholder="IP"
+                    id="myInput" onkeydown="IPSearch()">
+            </div>
+        </div>
+        <div class="h-8 bg-gray-300 grid grid-cols-2">
+            <div class="col-span-1 px-10 py-1 font-semibold">
+                User Guide
+            </div>
+            <div class="col-span-1 px-10 py-1 font-semibold flex">
+                <button class="text-gray-500 ml-auto rounded-l-lg hover:bg-gray-400" id="leftArrow"
+                    hx-get="/ip_decreament/{{ip}}" hx-target="body" hx-swap="innerHTML">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        class="h-6 w-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7">
+                        </path>
+                    </svg>
+                </button>
+                <div id="ipID">{{ip}}</div>
+                <button class="text-gray-500 mr-auto rounded-r-lg hover:bg-gray-400" id="rightArrow"
+                    hx-get="/ip_increament/{{ip}}" hx-target="body" hx-swap="innerHTML">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        class="h-6 w-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </button>
             </div>
         </div>
         <div class="flex-grow bg-gray-300 overflow-y-auto">
-            
+            {% for file in files %}
+            <div class="mx-10 my-5 h-16 pt-4 px-5 bg-gray-200 rounded flex justify-between">
+                {{file}}
+                <div>
+                    {% if file[-1] == "/" %}
+                    <button class="border border-gray-400 h-8 rounded px-6"
+                        onclick="downloadFolder('{{file}}')">Download</button>
+                    {% else %}
+                    <button class="border border-gray-400 h-8 rounded px-6"
+                        onclick="downloadFile('{{file}}')">Download</button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
         </div>
     </div>
+    <script>
+        var path = "";
+
+        function FileSearch() {
+            if (event.keyCode === 13) {
+                var inputValue = document.getElementById("myInput").value;
+                console.log("Input value changed: " + inputValue);
+
+                if(inputValue != ''){
+                    fetch("http://localhost:8000/searchFile/" + inputValue)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log(data);
+                            // Assuming data is an array of files, you can update the files list
+                            // Clear existing files
+                            var filesContainer = document.querySelector('.flex-grow');
+                            filesContainer.innerHTML = '';
+
+                            // Iterate through the new list of files and append them to the container
+                            Object.keys(data).forEach(file => {
+                                var fileElement = document.createElement('div');
+                                fileElement.className = 'mx-10 my-5 h-16 pt-4 px-5 bg-gray-200 rounded flex justify-between';
+                                fileElement.textContent = file;
+                                var downloadButton = document.createElement('button');
+                                downloadButton.className = 'border border-gray-400 h-8 rounded px-6';
+                                if (file.endsWith('/')) {
+                                    downloadButton.textContent = 'Download';
+                                    downloadButton.onclick = function () {
+                                        downloadFolder(file);
+                                    };
+                                } else {
+                                    downloadButton.textContent = 'Download';
+                                    downloadButton.onclick = function () {
+                                        downloadFile(file);
+                                    };
+                                }
+                                fileElement.appendChild(downloadButton);
+                                filesContainer.appendChild(fileElement);
+                            });
+                        })
+                        .catch(error => {
+                        console.error('Fetch error:', error);
+                    });
+                }
+                else{
+                    fetch("http://localhost:8000/searchIP/{{ip}}")
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log(data);
+                            // Assuming data is an array of files, you can update the files list
+                            // Clear existing files
+                            var filesContainer = document.querySelector('.flex-grow');
+                            filesContainer.innerHTML = '';
+
+                            // Iterate through the new list of files and append them to the container
+                            Object.keys(data).forEach(file => {
+                                var fileElement = document.createElement('div');
+                                fileElement.className = 'mx-10 my-5 h-16 pt-4 px-5 bg-gray-200 rounded flex justify-between';
+                                fileElement.textContent = file;
+                                var downloadButton = document.createElement('button');
+                                downloadButton.className = 'border border-gray-400 h-8 rounded px-6';
+                                if (file.endsWith('/')) {
+                                    downloadButton.textContent = 'Download';
+                                    downloadButton.onclick = function () {
+                                        downloadFolder(file);
+                                    };
+                                } else {
+                                    downloadButton.textContent = 'Download';
+                                    downloadButton.onclick = function () {
+                                        downloadFile(file);
+                                    };
+                                }
+                                fileElement.appendChild(downloadButton);
+                                filesContainer.appendChild(fileElement);
+                            });
+                        })
+                        .catch(error => {
+                            console.error('Fetch error:', error);
+                        });
+                }
+            }
+        }
+
+        function IPSearch() {
+            if (event.keyCode === 13) {
+                var inputValue = document.getElementById("myInput").value;
+                console.log("Input value changed: " + inputValue);
+
+                if(inputValue == ''){
+                    fetch("http://localhost:8000/searchIP/" + "{{ip}}")
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log(data);
+                            // Assuming data is an array of files, you can update the files list
+                            // Clear existing files
+                            var filesContainer = document.querySelector('.flex-grow');
+                            filesContainer.innerHTML = '';
+
+                            // Iterate through the new list of files and append them to the container
+                            Object.keys(data).forEach(file => {
+                                var fileElement = document.createElement('div');
+                                fileElement.className = 'mx-10 my-5 h-16 pt-4 px-5 bg-gray-200 rounded flex justify-between';
+                                fileElement.textContent = file;
+                                var downloadButton = document.createElement('button');
+                                downloadButton.className = 'border border-gray-400 h-8 rounded px-6';
+                                if (file.endsWith('/')) {
+                                    downloadButton.textContent = 'Download';
+                                    downloadButton.onclick = function () {
+                                        downloadFolder(file);
+                                    };
+                                } else {
+                                    downloadButton.textContent = 'Download';
+                                    downloadButton.onclick = function () {
+                                        downloadFile(file);
+                                    };
+                                }
+                                fileElement.appendChild(downloadButton);
+                                filesContainer.appendChild(fileElement);
+                            });
+                        })
+                        .catch(error => {
+                            console.error('Fetch error:', error);
+                        });
+                }
+                else{
+                    fetch("http://localhost:8000/searchIP/" + inputValue)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log(data);
+                            // Assuming data is an array of files, you can update the files list
+                            // Clear existing files
+                            var filesContainer = document.querySelector('.flex-grow');
+                            filesContainer.innerHTML = '';
+
+                            // Iterate through the new list of files and append them to the container
+                            Object.keys(data).forEach(file => {
+                                var fileElement = document.createElement('div');
+                                fileElement.className = 'mx-10 my-5 h-16 pt-4 px-5 bg-gray-200 rounded flex justify-between';
+                                fileElement.textContent = file;
+                                var downloadButton = document.createElement('button');
+                                downloadButton.className = 'border border-gray-400 h-8 rounded px-6';
+                                if (file.endsWith('/')) {
+                                    downloadButton.textContent = 'Download';
+                                    downloadButton.onclick = function () {
+                                        downloadFolder(file);
+                                    };
+                                } else {
+                                    downloadButton.textContent = 'Download';
+                                    downloadButton.onclick = function () {
+                                        downloadFile(file);
+                                    };
+                                }
+                                fileElement.appendChild(downloadButton);
+                                filesContainer.appendChild(fileElement);
+                            });
+                        })
+                        .catch(error => {
+                            console.error('Fetch error:', error);
+                        });
+                }
+                
+            }
+        }
+
+
+
+
+        async function downloadFile(t) {
+            console.log(t);
+            var url = 'http://localhost:8000/download-path-ip';
+
+            fetch(url, {
+                method: 'POST', // HTTP request method
+                headers: {
+                    'Content-Type': 'application/json', // Specify the Content-Type
+                },
+                body: JSON.stringify({ path: t }), // Convert data to JSON string
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(async data => {
+                    console.log(data);
+
+                    var request_data = { path: data.fileName };
+                    fetch('http://' + data.ip + ':8000/download-file', {
+                        method: 'POST', // HTTP request method
+                        headers: {
+                            'Content-Type': 'application/json', // Specify the Content-Type
+                        },
+                        body: JSON.stringify(request_data), // Convert data to JSON string
+                    })
+                        .then(async response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                            const blob = await response.blob();
+                            const link = document.createElement("a");
+                            link.href = window.URL.createObjectURL(blob);
+                            link.download = data.fileName;
+                            link.click();
+                        })
+                        .catch(error => {
+                            console.error('Fetch error:', error);
+                        });
+
+
+
+                })
+                .catch(error => {
+                    console.error('Fetch error:', error);
+                });
+        }
+
+        function downloadFolder(t) {
+            console.log(t);
+            var url = 'http://localhost:8000/download-path-ip/{{ip}}';
+
+            fetch(url, {
+                method: 'POST', // HTTP request method
+                headers: {
+                    'Content-Type': 'application/json', // Specify the Content-Type
+                },
+                body: JSON.stringify({ path: t }), // Convert data to JSON string
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(async data => {
+                    console.log(data);
+
+                    var request_data = { path: data.fileName };
+                    fetch('http://' + data.ip + ':8000/download-folder', {
+                        method: 'POST', // HTTP request method
+                        headers: {
+                            'Content-Type': 'application/json', // Specify the Content-Type
+                        },
+                        body: JSON.stringify(request_data), // Convert data to JSON string
+                    })
+                        .then(async response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                            const blob = await response.blob();
+                            const link = document.createElement("a");
+                            link.href = window.URL.createObjectURL(blob);
+                            link.download = data.fileName;
+                            link.click();
+                        })
+                        .catch(error => {
+                            console.error('Fetch error:', error);
+                        });
+
+
+
+                })
+                .catch(error => {
+                    console.error('Fetch error:', error);
+                });
+        }
+
+    </script>
 </body>
+
 </html>
