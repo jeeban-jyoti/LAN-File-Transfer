@@ -218,10 +218,6 @@ async def Get_resource_ip(ip: str, path: PATH):
 
 
 
-
-
-
-
 @app.get('/frontend', response_class=HTMLResponse)
 def Serve_Site(request: Request):
     _, files = getLANFilessocket()
